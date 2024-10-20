@@ -24,10 +24,13 @@ public class AnimationAndMovmentController : MonoBehaviour
     float runMultiplier = 4.0f;
     float mouseSensitivity = 3.0f;
 
-    float cameraPitch = 0.0f; // Για τον έλεγχο της κατακόρυφης περιστροφής
-    public Transform cameraTransform; // Σύνδεση με την κάμερα του παίκτη
-    public float maxPitchAngle = 40.0f; // Όριο προς τα πάνω
-    public float minPitchAngle = -40.0f; // Όριο προς τα κάτω
+    float cameraPitch = 0.0f;
+    public Transform cameraTransform;
+    public float maxPitchAngle = 40.0f;
+    public float minPitchAngle = -40.0f;
+    public GameObject bulletPrefab; // Prefab για το βλήμα
+    public Transform shootPoint; // Σημείο από όπου θα πυροβολεί ο παίκτης
+    public float bulletSpeed = 20f; // Ταχύτητα του βλήματος
 
     void Awake()
     {
@@ -48,6 +51,8 @@ public class AnimationAndMovmentController : MonoBehaviour
         PlayerInput.CharacterControls.Look.performed += onLookInput;
         PlayerInput.CharacterControls.Look.canceled += onLookInput;
 
+        PlayerInput.CharacterControls.Shoot.started += onShoot; // Σύνδεση για το Shoot input
+
         Cursor.lockState = CursorLockMode.Locked;
     }
 
@@ -65,6 +70,11 @@ public class AnimationAndMovmentController : MonoBehaviour
     void onLookInput(InputAction.CallbackContext context)
     {
         currentLookInput = context.ReadValue<Vector2>();
+    }
+
+    void onShoot(InputAction.CallbackContext context)
+    {
+        Shoot(); // Κάθε φορά που γίνεται Shoot, καλούμε τη μέθοδο Shoot
     }
 
     void handleRotation()
@@ -138,6 +148,19 @@ public class AnimationAndMovmentController : MonoBehaviour
         {
             characterController.Move(moveDirection * Time.deltaTime);
         }
+    }
+
+    void Shoot()
+    {
+        // Δημιουργία βλήματος
+        GameObject bullet = Instantiate(bulletPrefab, shootPoint.position, shootPoint.rotation);
+        
+        // Πρόσθεση ταχύτητας στο βλήμα
+        Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
+        bulletRb.velocity = shootPoint.forward * bulletSpeed;
+
+        // Καταστροφή του βλήματος μετά από κάποιο χρονικό διάστημα
+        Destroy(bullet, 3f); // Καταστρέφεται μετά από 5 δευτερόλεπτα
     }
 
     // Update is called once per frame
