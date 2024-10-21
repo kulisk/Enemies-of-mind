@@ -6,27 +6,29 @@ using UnityEngine.AI;
 public class AiLocomotion : MonoBehaviour
 {
     public Transform playerTransform;
+    public float detectionRange = 10.0f; // Απόσταση στην οποία το ζόμπι εντοπίζει τον παίκτη
     public float maxTime = 1.0f;
     public float maxDistance = 1.0f;
     public float attackDistance = 2.5f; // Απόσταση στην οποία μπορεί να κάνει attack ο εχθρός
-    public int damage = 10; // Ποσότητα ζημιάς που κάνει ο εχθρός στον παίκτη
-    private float attackCooldown = 0.9f; // Χρονικό διάστημα μεταξύ των επιθέσεων
-    private float attackTimer = 0.0f; // Χρονόμετρο για επιθέσεις
+    public int damage = 10;
+    private float attackCooldown = 0.9f;
+    private float attackTimer = 0.0f;
 
     int isDeadHash;
     int isAttackingHash;
+    int SpeedHash;
 
     NavMeshAgent agent;
     Animator animator;
-    AnimationAndMovmentController playerHealth; // Αναφορά στον παίκτη
+    AnimationAndMovmentController playerHealth;
 
-    float timer = 0.0f;
+    public Transform[] patrolPoints; // Προκαθορισμένα σημεία περιπολίας
+    private int currentPatrolIndex = 0; // Δείκτης για το τρέχον σημείο περιπολίας
+    private bool isChasingPlayer = false; // Έλεγχος αν το ζόμπι κυνηγάει τον παίκτη
+    private bool isDead = false;
 
-    // Μεταβλητές για τη λογική της ζωής και των χτυπημάτων
-    public int maxHits = 5;   // Πόσα χτυπήματα δέχεται μέχρι να πεθάνει
-    private int currentHits = 0; // Πόσα χτυπήματα έχει δεχτεί
-    bool isDead = false; // Έλεγχος αν ο εχθρός είναι νεκρός
-    bool isAttacking = false;
+    public int maxHits = 5;
+    private int currentHits = 0;
 
     void Awake()
     {
@@ -35,8 +37,8 @@ public class AiLocomotion : MonoBehaviour
 
         isDeadHash = Animator.StringToHash("isDead");
         isAttackingHash = Animator.StringToHash("isAttacking");
+        SpeedHash = Animator.StringToHash("Speed");
 
-        // Αναζήτηση του script του παίκτη που χειρίζεται τη ζωή
         playerHealth = playerTransform.GetComponent<AnimationAndMovmentController>();
     }
 
@@ -47,25 +49,31 @@ public class AiLocomotion : MonoBehaviour
             return; // Αν είναι νεκρός, δεν κάνει τίποτα
         }
 
-        timer -= Time.deltaTime;
         attackTimer -= Time.deltaTime;
 
-        if (timer < 0.0f)
+        float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
+
+        if (distanceToPlayer <= detectionRange)
         {
-            float sqDistance = (playerTransform.position - agent.destination).sqrMagnitude;
-            if (sqDistance > maxDistance * maxDistance)
-            {
-                agent.destination = playerTransform.position;
-            }
-            timer = maxTime;
+            // Αν ο παίκτης είναι κοντά, κυνηγάει τον παίκτη
+            isChasingPlayer = true;
+            agent.destination = playerTransform.position;
+        }
+        else if (isChasingPlayer && distanceToPlayer > detectionRange)
+        {
+            // Αν ο παίκτης βγήκε από την εμβέλεια, επιστρέφει στην περιπολία
+            isChasingPlayer = false;
+            GoToNextPatrolPoint();
         }
 
-        // Ενημέρωση του animation με βάση την ταχύτητα του agent
-        animator.SetFloat("Speed", agent.velocity.magnitude);
+        // Αν δεν κυνηγάει τον παίκτη, συνεχίζει την περιπολία
+        if (!isChasingPlayer && !agent.pathPending && agent.remainingDistance < 3.0f)
+        {
+            GoToNextPatrolPoint();
+        }
 
-        // Έλεγχος αν ο εχθρός είναι σε απόσταση επίθεσης
-        float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
-        if (distanceToPlayer <= attackDistance && attackTimer <= 0)
+        // Έλεγχος για επίθεση
+        if (isChasingPlayer && distanceToPlayer <= attackDistance && attackTimer <= 0)
         {
             AttackPlayer(true); // Κλήση της μεθόδου επίθεσης
             attackTimer = attackCooldown; // Επαναφορά του χρονόμετρου για την επόμενη επίθεση
@@ -74,6 +82,18 @@ public class AiLocomotion : MonoBehaviour
         {
             AttackPlayer(false);
         }
+
+        // Ενημέρωση του animation με βάση την ταχύτητα του agent
+        animator.SetFloat(SpeedHash, agent.velocity.magnitude);
+    }
+
+    void GoToNextPatrolPoint()
+    {
+        if (patrolPoints.Length == 0)
+            return;
+
+        agent.destination = patrolPoints[currentPatrolIndex].position;
+        currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
     }
 
     void AttackPlayer(bool itis)
@@ -100,10 +120,10 @@ public class AiLocomotion : MonoBehaviour
             TakeHit();  // Καλεί τη μέθοδο TakeHit στον εχθρό
         }
     }
-    
+
 
     // Μέθοδος που καλείται όταν ο εχθρός δέχεται χτύπημα (π.χ. από σφαίρα)
-     public void TakeHit()
+    public void TakeHit()
     {
         if (isDead) return;  // Αν είναι ήδη νεκρός, δεν γίνεται τίποτα
 

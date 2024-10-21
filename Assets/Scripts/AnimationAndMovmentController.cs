@@ -2,12 +2,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class AnimationAndMovmentController : MonoBehaviour
 {
     PlayerInput PlayerInput;
     CharacterController characterController;
     Animator animator;
+
+    public Slider HealthBar;
 
     int isWalkingHash;
     int isRunningHash;
@@ -23,7 +26,7 @@ public class AnimationAndMovmentController : MonoBehaviour
     bool isDead;
     
     float rotationFactorPerFrame = 1.0f;
-    float runMultiplier = 4.0f;
+    float runMultiplier = 5.0f;
     float mouseSensitivity = 3.0f;
 
     float cameraPitch = 0.0f;
@@ -32,10 +35,10 @@ public class AnimationAndMovmentController : MonoBehaviour
     public float minPitchAngle = -40.0f;
     public GameObject bulletPrefab; // Prefab για το βλήμα
     public Transform shootPoint; // Σημείο από όπου θα πυροβολεί ο παίκτης
-    public float bulletSpeed = 50f; // Ταχύτητα του βλήματος
+    public float bulletSpeed = 30f; // Ταχύτητα του βλήματος
 
     // Νέες μεταβλητές για τη ζωή του παίκτη
-    public int maxHealth = 100; // Η μέγιστη ζωή του παίκτη
+    public int maxHealth = 1000; // Η μέγιστη ζωή του παίκτη
     private int currentHealth;  // Η τρέχουσα ζωή του παίκτη
 
     void Awake()
@@ -64,6 +67,8 @@ public class AnimationAndMovmentController : MonoBehaviour
 
         // Αρχικοποίηση της ζωής
         currentHealth = maxHealth;
+        HealthBar.value = maxHealth;
+        HealthBar.maxValue = maxHealth;
         isDead = false;
     }
 
@@ -199,7 +204,7 @@ public class AnimationAndMovmentController : MonoBehaviour
         bulletRb.velocity = shootPoint.forward * bulletSpeed;
 
         // Καταστροφή του βλήματος μετά από κάποιο χρονικό διάστημα
-        Destroy(bullet, 1f);
+        Destroy(bullet, 5f);
     }
 
     // Update is called once per frame
@@ -218,6 +223,8 @@ public class AnimationAndMovmentController : MonoBehaviour
         {
             characterController.Move(currentMovement * Time.deltaTime);
         }
+
+        HealthBar.value = currentHealth;
     }
 
     void OnEnable()
