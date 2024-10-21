@@ -8,37 +8,50 @@ public class AiLocomotion : MonoBehaviour
     public Transform playerTransform;
     public float maxTime = 1.0f;
     public float maxDistance = 1.0f;
+    public float attackDistance = 2.5f; // Απόσταση στην οποία μπορεί να κάνει attack ο εχθρός
+    public int damage = 10; // Ποσότητα ζημιάς που κάνει ο εχθρός στον παίκτη
+    private float attackCooldown = 0.9f; // Χρονικό διάστημα μεταξύ των επιθέσεων
+    private float attackTimer = 0.0f; // Χρονόμετρο για επιθέσεις
 
+    int isDeadHash;
+    int isAttackingHash;
 
     NavMeshAgent agent;
     Animator animator;
+    AnimationAndMovmentController playerHealth; // Αναφορά στον παίκτη
+
     float timer = 0.0f;
 
     // Μεταβλητές για τη λογική της ζωής και των χτυπημάτων
     public int maxHits = 5;   // Πόσα χτυπήματα δέχεται μέχρι να πεθάνει
     private int currentHits = 0; // Πόσα χτυπήματα έχει δεχτεί
+    bool isDead = false; // Έλεγχος αν ο εχθρός είναι νεκρός
+    bool isAttacking = false;
 
-    private bool isDead = false; // Έλεγχος αν ο εχθρός είναι νεκρός
-
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
+
+        isDeadHash = Animator.StringToHash("isDead");
+        isAttackingHash = Animator.StringToHash("isAttacking");
+
+        // Αναζήτηση του script του παίκτη που χειρίζεται τη ζωή
+        playerHealth = playerTransform.GetComponent<AnimationAndMovmentController>();
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (isDead)
         {
-            // Αν ο εχθρός είναι νεκρός, δεν κυνηγάει πλέον τον παίκτη
-            return;
+            return; // Αν είναι νεκρός, δεν κάνει τίποτα
         }
 
         timer -= Time.deltaTime;
+        attackTimer -= Time.deltaTime;
+
         if (timer < 0.0f)
-        {    
+        {
             float sqDistance = (playerTransform.position - agent.destination).sqrMagnitude;
             if (sqDistance > maxDistance * maxDistance)
             {
@@ -49,19 +62,48 @@ public class AiLocomotion : MonoBehaviour
 
         // Ενημέρωση του animation με βάση την ταχύτητα του agent
         animator.SetFloat("Speed", agent.velocity.magnitude);
+
+        // Έλεγχος αν ο εχθρός είναι σε απόσταση επίθεσης
+        float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
+        if (distanceToPlayer <= attackDistance && attackTimer <= 0)
+        {
+            AttackPlayer(true); // Κλήση της μεθόδου επίθεσης
+            attackTimer = attackCooldown; // Επαναφορά του χρονόμετρου για την επόμενη επίθεση
+        }
+        else if (distanceToPlayer > attackDistance)
+        {
+            AttackPlayer(false);
+        }
     }
 
-    void OnTriggerEnter(Collider other)
-{
-    if (other.CompareTag("Bullet"))
+    void AttackPlayer(bool itis)
     {
-        TakeHit();  // Καλεί τη μέθοδο TakeHit στον εχθρό
-    }
-}
+        if (itis == true)
+        {
+            // Εκτέλεση του animation επίθεσης
+            animator.SetBool(isAttackingHash, true);
 
+            // Κλήση της μεθόδου που προκαλεί ζημιά στον παίκτη
+            playerHealth.TakeDamage(damage);
+        }
+        else
+        {
+            animator.SetBool(isAttackingHash, false);
+        }
+    }
+
+    // Όταν χτυπήσει ο εχθρός από σφαίρα
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Bullet"))
+        {
+            TakeHit();  // Καλεί τη μέθοδο TakeHit στον εχθρό
+        }
+    }
+    
 
     // Μέθοδος που καλείται όταν ο εχθρός δέχεται χτύπημα (π.χ. από σφαίρα)
-    public void TakeHit()
+     public void TakeHit()
     {
         if (isDead) return;  // Αν είναι ήδη νεκρός, δεν γίνεται τίποτα
 
@@ -82,9 +124,8 @@ public class AiLocomotion : MonoBehaviour
         agent.isStopped = true;
 
         // Εκκίνηση του animation θανάτου
-        animator.SetTrigger("Die");
+        animator.SetBool(isDeadHash, true);
 
-        // Μπορείς να βάλεις εδώ επιπλέον λογική, π.χ. να διαγραφεί ο εχθρός μετά από λίγο.
         Destroy(gameObject, 5f); // Διαγράφει τον εχθρό 5 δευτερόλεπτα μετά το θάνατό του
     }
 }
