@@ -41,11 +41,19 @@ public class AnimationAndMovmentController : MonoBehaviour
     public int maxHealth = 1000; // Η μέγιστη ζωή του παίκτη
     private int currentHealth;  // Η τρέχουσα ζωή του παίκτη
 
+    // Νέες μεταβλητές για ήχους
+    public AudioClip walkSound;  // Ήχος περπατήματος
+    public AudioClip runSound;   // Ήχος τρεξίματος
+    public AudioClip shootSound; // Ήχος πυροβολισμού
+    public AudioClip deathSound; // Ήχος θανάτου
+    private AudioSource audioSource; // Ηχητική πηγή
+
     void Awake()
     {
         PlayerInput = new PlayerInput();
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        audioSource = GetComponent<AudioSource>(); // Βρίσκουμε την ηχητική πηγή
 
         isWalkingHash = Animator.StringToHash("isWalking");
         isRunningHash = Animator.StringToHash("isRunning");
@@ -94,7 +102,7 @@ public class AnimationAndMovmentController : MonoBehaviour
         {
             Debug.Log("Player is Dead");
             animator.SetBool(isDeadHash, true);
-            // Μπορείς να προσθέσεις εδώ λογική για θάνατο, π.χ. αναπαραγωγή animation θανάτου, restart κλπ.
+            audioSource.PlayOneShot(deathSound); 
             characterController.enabled = false;
             isDead = true;
         }
@@ -145,16 +153,18 @@ public class AnimationAndMovmentController : MonoBehaviour
 
         if (isMovementPressed && !isWalking)
         {
-            animator.SetBool("isWalking", true);
+            animator.SetBool(isWalkingHash, true);
+            audioSource.PlayOneShot(walkSound); // Παίζει ήχο περπατήματος
         }
         else if (!isMovementPressed && isWalking)
         {
-            animator.SetBool("isWalking", false);
+            animator.SetBool(isWalkingHash, false);
         }
 
         if ((isMovementPressed && isRunPressed) && !isRunning)
         {
             animator.SetBool(isRunningHash, true);
+            audioSource.PlayOneShot(runSound); // Παίζει ήχο τρεξίματος
         }
         else if ((!isMovementPressed || !isRunPressed) && isRunning)
         {
@@ -180,10 +190,8 @@ public class AnimationAndMovmentController : MonoBehaviour
 
     void handleMovement()
     {
-        // Κατεύθυνση που κοιτάει ο χαρακτήρας με βάση το transform.forward
         Vector3 moveDirection = (transform.forward * currentMovementInput.y) + (transform.right * currentMovementInput.x);
 
-        // Κίνηση τρεξίματος ή περπατήματος
         if (isRunPressed)
         {
             characterController.Move(moveDirection * runMultiplier * Time.deltaTime);
@@ -203,11 +211,13 @@ public class AnimationAndMovmentController : MonoBehaviour
         Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
         bulletRb.velocity = shootPoint.forward * bulletSpeed;
 
+        // Παίζει ήχο πυροβολισμού
+        audioSource.PlayOneShot(shootSound);
+
         // Καταστροφή του βλήματος μετά από κάποιο χρονικό διάστημα
         Destroy(bullet, 5f);
     }
 
-    // Update is called once per frame
     void Update()
     {
         handleRotation();
