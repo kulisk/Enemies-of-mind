@@ -126,7 +126,10 @@ public class AnimationAndMovmentController : MonoBehaviour
 
     void onShoot(InputAction.CallbackContext context)
     {
-        Shoot(); // Κάθε φορά που γίνεται Shoot, καλούμε τη μέθοδο Shoot
+        if (isDead == false)
+        {
+            Shoot(); // Κάθε φορά που γίνεται Shoot, καλούμε τη μέθοδο Shoot
+        }
     }
 
     void handleRotation()
